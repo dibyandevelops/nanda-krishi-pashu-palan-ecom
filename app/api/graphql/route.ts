@@ -18,6 +18,7 @@ import { createEsewaPayload, verifyEsewaTransaction } from "@/lib/esewa";
 const schema = buildSchema(`
   type User {
     id: ID!
+    name: String
     phone: String!
     isAdmin: Boolean!
     defaultDeliveryAddress: String
@@ -92,7 +93,7 @@ const schema = buildSchema(`
   }
 
   type Mutation {
-    register(phone: String!, password: String!): AuthPayload!
+    register(name: String!, phone: String!, password: String!): AuthPayload!
     login(phone: String!, password: String!): AuthPayload!
     logout: MutationStatus!
     createOrder(input: CreateOrderInput!): Order!
@@ -118,6 +119,7 @@ const schema = buildSchema(`
 
 type DbUser = {
   id: string;
+  full_name?: string | null;
   phone: string;
   password_hash: string;
   is_admin: boolean;
@@ -156,6 +158,7 @@ function toUser(user: DbUser | null) {
 
   return {
     id: user.id,
+    name: user.full_name || null,
     phone: user.phone,
     isAdmin: user.is_admin,
     defaultDeliveryAddress: user.default_delivery_address,
@@ -306,8 +309,16 @@ const root = {
     return orders.map(toOrder);
   },
 
-  register: async ({ phone, password }: { phone: string; password: string }, context: Context) => {
+  register: async (
+    { name, phone, password }: { name: string; phone: string; password: string },
+    context: Context,
+  ) => {
+    const cleanedName = (name || "").trim();
     const normalizedPhone = normalizePhone(phone || "");
+
+    if (!cleanedName || cleanedName.length < 2) {
+      throw new Error("Please enter your full name");
+    }
 
     if (!isValidEsewaPhone(normalizedPhone)) {
       throw new Error("Enter a valid eSewa registered number");
@@ -328,9 +339,9 @@ const root = {
 
     const passwordHash = hashPassword(password);
     const inserted = (await sql`
-      INSERT INTO app_users (phone, password_hash)
-      VALUES (${normalizedPhone}, ${passwordHash})
-      RETURNING id, phone, is_admin, default_delivery_address, default_delivery_lat, default_delivery_lng, password_hash
+      INSERT INTO app_users (full_name, phone, password_hash)
+      VALUES (${cleanedName}, ${normalizedPhone}, ${passwordHash})
+      RETURNING id, full_name, phone, is_admin, default_delivery_address, default_delivery_lat, default_delivery_lng, password_hash
     `) as DbUser[];
 
     const createdUser = inserted[0];
@@ -351,7 +362,7 @@ const root = {
 
     const sql = getSql();
     const users = (await sql`
-      SELECT id, phone, password_hash, is_admin, default_delivery_address, default_delivery_lat, default_delivery_lng
+      SELECT id, full_name, phone, password_hash, is_admin, default_delivery_address, default_delivery_lat, default_delivery_lng
       FROM app_users
       WHERE phone = ${normalizedPhone}
       LIMIT 1

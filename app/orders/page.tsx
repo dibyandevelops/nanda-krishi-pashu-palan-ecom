@@ -232,6 +232,7 @@ export default function OrdersPage() {
   const [showQuickLoginModal, setShowQuickLoginModal] = useState(false);
   const [loginPhone, setLoginPhone] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
@@ -270,9 +271,7 @@ export default function OrdersPage() {
       ),
     onSuccess: async () => {
       await ordersQuery.refetch();
-      setShowQuickLoginModal(false);
-      setLoginPassword("");
-      setLoginError(null);
+      closeQuickLoginModal();
       if (pendingPaymentOrderId) {
         payMutation.mutate(pendingPaymentOrderId);
       }
@@ -305,9 +304,7 @@ export default function OrdersPage() {
       writeGuestOrderId(data.createOrder.id);
       setNotice(`Order Number #${data.createOrder.id} created.`);
       localStorage.removeItem("checkout_cart");
-      setCheckoutItems([]);
-      setShowCheckoutModal(false);
-      setCheckoutStep(1);
+      closeCheckoutModal();
       await ordersQuery.refetch();
     },
     onError: (error) => {
@@ -348,7 +345,7 @@ export default function OrdersPage() {
     },
     onSuccess: async () => {
       setNotice("Order delivery details updated.");
-      setEditingOrder(null);
+      closeEditOrderModal();
       await ordersQuery.refetch();
     },
   });
@@ -586,6 +583,50 @@ export default function OrdersPage() {
     }
   }
 
+  function resetCheckoutModalForm() {
+    setCheckoutStep(1);
+    setCheckoutError(null);
+    setCheckoutItems([]);
+    setDeliveryAddress("");
+    setDeliveryDate(getDefaultDeliveryDate());
+    setSaveAsDefaultLocation(true);
+    setDeliveryLat(27.6348674);
+    setDeliveryLng(85.3405037);
+    setIsDetectingLocation(false);
+    setIsResolvingAddress(false);
+  }
+
+  function closeCheckoutModal() {
+    setShowCheckoutModal(false);
+    resetCheckoutModalForm();
+  }
+
+  function resetQuickLoginForm() {
+    setLoginPhone("");
+    setLoginPassword("");
+    setShowLoginPassword(false);
+    setLoginError(null);
+  }
+
+  function closeQuickLoginModal() {
+    setShowQuickLoginModal(false);
+    resetQuickLoginForm();
+  }
+
+  function resetEditOrderForm() {
+    setEditAddress("");
+    setEditDate(getDefaultDeliveryDate());
+    setEditLat(27.6348674);
+    setEditLng(85.3405037);
+    setIsDetectingEditLocation(false);
+    setIsResolvingEditAddress(false);
+  }
+
+  function closeEditOrderModal() {
+    setEditingOrder(null);
+    resetEditOrderForm();
+  }
+
   async function placeOrder() {
     await createOrderMutation.mutateAsync();
   }
@@ -799,6 +840,7 @@ export default function OrdersPage() {
                         }
                         if (!ordersQuery.data?.me) {
                           setPendingPaymentOrderId(order.id);
+                          resetQuickLoginForm();
                           setShowQuickLoginModal(true);
                           return;
                         }
@@ -820,13 +862,16 @@ export default function OrdersPage() {
       <SiteFooter locationUrl={locationUrl} storeContactNumber={storeContactNumber} whatsappUrl={whatsappUrl} />
 
       {showCheckoutModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-2xl border border-[#dcc8a9] bg-[#fff8eb] p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4" onClick={closeCheckoutModal}>
+          <div
+            className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-2xl border border-[#dcc8a9] bg-[#fff8eb] p-6 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-xl font-semibold text-[#4b3118]">Create Order - Step {checkoutStep} of 3</h3>
               <button
                 type="button"
-                onClick={() => setShowCheckoutModal(false)}
+                onClick={closeCheckoutModal}
                 className="rounded-md bg-[#f1e0c3] px-3 py-1 text-sm font-semibold text-[#5c4024]"
               >
                 Close
@@ -962,11 +1007,14 @@ export default function OrdersPage() {
       ) : null}
 
       {editingOrder ? (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 px-4">
-          <div className="max-h-[90vh] w-full max-w-xl overflow-auto rounded-2xl border border-[#dcc8a9] bg-[#fff8eb] p-6 shadow-2xl">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 px-4" onClick={closeEditOrderModal}>
+          <div
+            className="max-h-[90vh] w-full max-w-xl overflow-auto rounded-2xl border border-[#dcc8a9] bg-[#fff8eb] p-6 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-xl font-semibold text-[#4b3118]">Edit Order #{editingOrder.id}</h3>
-              <button type="button" onClick={() => setEditingOrder(null)} className="rounded-md bg-[#f1e0c3] px-3 py-1 text-sm font-semibold text-[#5c4024]">
+              <button type="button" onClick={closeEditOrderModal} className="rounded-md bg-[#f1e0c3] px-3 py-1 text-sm font-semibold text-[#5c4024]">
                 Close
               </button>
             </div>
@@ -1032,8 +1080,11 @@ export default function OrdersPage() {
       ) : null}
 
       {receiptOrder ? (
-        <div className="fixed inset-0 z-[65] flex items-center justify-center bg-black/45 px-4">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-2xl border border-[#dcc8a9] bg-[#fff8eb] p-6 shadow-2xl">
+        <div className="fixed inset-0 z-[65] flex items-center justify-center bg-black/45 px-4" onClick={() => setReceiptOrder(null)}>
+          <div
+            className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-2xl border border-[#dcc8a9] bg-[#fff8eb] p-6 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-xl font-semibold text-[#4b3118]">Receipt #{receiptOrder.id}</h3>
               <button type="button" onClick={() => setReceiptOrder(null)} className="rounded-md bg-[#f1e0c3] px-3 py-1 text-sm font-semibold text-[#5c4024]">
@@ -1074,13 +1125,16 @@ export default function OrdersPage() {
       ) : null}
 
       {showQuickLoginModal ? (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 px-4">
-          <div className="w-full max-w-md rounded-2xl border border-[#dcc8a9] bg-[#fff8eb] p-6 shadow-2xl">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 px-4" onClick={closeQuickLoginModal}>
+          <div
+            className="w-full max-w-md rounded-2xl border border-[#dcc8a9] bg-[#fff8eb] p-6 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-xl font-semibold text-[#4b3118]">Login to Pay</h3>
               <button
                 type="button"
-                onClick={() => setShowQuickLoginModal(false)}
+                onClick={closeQuickLoginModal}
                 className="rounded-md bg-[#f1e0c3] px-3 py-1 text-sm font-semibold text-[#5c4024]"
               >
                 Close
@@ -1088,26 +1142,41 @@ export default function OrdersPage() {
             </div>
 
             <form className="space-y-3" onSubmit={submitQuickLogin}>
-              <input
-                type="tel"
-                value={loginPhone}
-                onChange={(event) => setLoginPhone(event.target.value)}
-                placeholder="eSewa number"
-                required
-                className="w-full rounded-lg border border-[#ccb08a] bg-white px-3 py-2 text-sm"
-              />
-              <input
-                type="password"
-                value={loginPassword}
-                onChange={(event) => setLoginPassword(event.target.value)}
-                placeholder="Password"
-                required
-                className="w-full rounded-lg border border-[#ccb08a] bg-white px-3 py-2 text-sm"
-              />
+              <label className="block space-y-1">
+                <span className="text-xs font-semibold text-[#5c4024]">eSewa Number</span>
+                <input
+                  type="tel"
+                  value={loginPhone}
+                  onChange={(event) => setLoginPhone(event.target.value)}
+                  placeholder="eSewa number"
+                  required
+                  className="w-full rounded-lg border border-[#ccb08a] bg-white px-3 py-2 text-sm outline-none transition focus:border-[#6f4b2b] focus:ring-2 focus:ring-[#6f4b2b]/20"
+                />
+              </label>
+              <label className="block space-y-1">
+                <span className="text-xs font-semibold text-[#5c4024]">Password</span>
+                <div className="flex items-center gap-2 rounded-lg border border-[#ccb08a] bg-white px-2 py-1">
+                  <input
+                    type={showLoginPassword ? "text" : "password"}
+                    value={loginPassword}
+                    onChange={(event) => setLoginPassword(event.target.value)}
+                    placeholder="Password"
+                    required
+                    className="w-full bg-transparent px-1 py-1 text-sm outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowLoginPassword((prev) => !prev)}
+                    className="rounded-md px-2 py-1 text-xs font-semibold text-[#4f7c2b] hover:bg-[#eef7e3]"
+                  >
+                    {showLoginPassword ? "Hide" : "Show"}
+                  </button>
+                </div>
+              </label>
               <button
                 type="submit"
                 disabled={quickLoginMutation.isPending}
-                className="w-full rounded-lg bg-[#5e9033] px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                className="w-full rounded-lg bg-[#5e9033] px-3 py-2 text-sm font-semibold text-white transition hover:brightness-105 disabled:opacity-60"
               >
                 {quickLoginMutation.isPending ? "Please wait..." : "Login and Continue"}
               </button>

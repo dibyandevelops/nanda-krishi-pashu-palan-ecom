@@ -54,6 +54,11 @@ export async function ensureUsersTable() {
       `;
 
       await sql`
+        ALTER TABLE app_users
+        ADD COLUMN IF NOT EXISTS full_name TEXT
+      `;
+
+      await sql`
         CREATE TABLE IF NOT EXISTS orders (
           id BIGSERIAL PRIMARY KEY,
           user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
@@ -124,8 +129,8 @@ export async function ensureUsersTable() {
       if (!existingAdmin.length) {
         const adminHash = hashPassword(ADMIN_PASSWORD);
         await sql`
-          INSERT INTO app_users (phone, password_hash, is_admin)
-          VALUES (${ADMIN_PHONE}, ${adminHash}, TRUE)
+          INSERT INTO app_users (phone, password_hash, is_admin, full_name)
+          VALUES (${ADMIN_PHONE}, ${adminHash}, TRUE, 'Admin User')
         `;
       }
     })();

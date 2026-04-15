@@ -94,8 +94,10 @@ export default function Storefront() {
   const [message, setMessage] = useState<string | null>(null);
 
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [authName, setAuthName] = useState("");
   const [authPhone, setAuthPhone] = useState("");
   const [authPassword, setAuthPassword] = useState("");
+  const [showAuthPassword, setShowAuthPassword] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
@@ -168,20 +170,24 @@ export default function Storefront() {
             }
           `
           : `
-            mutation ($phone: String!, $password: String!) {
-              register(phone: $phone, password: $password) {
+            mutation ($name: String!, $phone: String!, $password: String!) {
+              register(name: $name, phone: $phone, password: $password) {
                 ok
                 user { id phone isAdmin }
               }
             }
           `;
 
-      return gqlRequest(mutation, { phone: authPhone, password: authPassword }, { operationName: mode });
+      const variables =
+        mode === "register"
+          ? { name: authName, phone: authPhone, password: authPassword }
+          : { phone: authPhone, password: authPassword };
+
+      return gqlRequest(mutation, variables, { operationName: mode });
     },
     onSuccess: async () => {
       await meQuery.refetch();
-      setShowAuthModal(false);
-      setAuthPassword("");
+      closeAuthModal();
       setMessage("Logged in successfully.");
     },
     onError: (error) => {
@@ -257,9 +263,7 @@ export default function Storefront() {
       writeGuestOrderId(data.createOrder.id);
       setMessage(`Order Number #${data.createOrder.id} created successfully.`);
       setCart({});
-      setShowCartModal(false);
-      setCheckoutStep(1);
-      setCheckoutError(null);
+      closeCheckoutModal();
       localStorage.removeItem("checkout_cart");
       await meQuery.refetch();
       const ids = readGuestOrderIds();
@@ -285,7 +289,47 @@ export default function Storefront() {
   async function handleAuthSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setAuthError(null);
+    if (authMode === "register" && authName.trim().length < 2) {
+      setAuthError("Please enter your full name");
+      return;
+    }
     await authMutation.mutateAsync(authMode);
+  }
+
+  function resetAuthForm() {
+    setAuthMode("login");
+    setAuthName("");
+    setAuthPhone("");
+    setAuthPassword("");
+    setShowAuthPassword(false);
+    setAuthError(null);
+  }
+
+  function closeAuthModal() {
+    setShowAuthModal(false);
+    resetAuthForm();
+  }
+
+  function openAuthModal() {
+    resetAuthForm();
+    setShowAuthModal(true);
+  }
+
+  function resetCheckoutModalForm() {
+    setCheckoutStep(1);
+    setCheckoutError(null);
+    setDeliveryAddress("");
+    setDeliveryDate(getDefaultDeliveryDate());
+    setSaveAsDefaultLocation(true);
+    setDeliveryLat(27.6348674);
+    setDeliveryLng(85.3405037);
+    setIsDetectingLocation(false);
+    setIsResolvingAddress(false);
+  }
+
+  function closeCheckoutModal() {
+    setShowCartModal(false);
+    resetCheckoutModalForm();
   }
 
   function openCartCheckout() {
@@ -380,7 +424,7 @@ export default function Storefront() {
         isAdmin={meQuery.data?.me?.isAdmin}
         phone={meQuery.data?.me?.phone || null}
         onLogout={() => logoutMutation.mutate()}
-        onLoginRegister={() => setShowAuthModal(true)}
+        onLoginRegister={openAuthModal}
       />
 
       <section className="mx-auto max-w-6xl px-4 pb-24 pt-8 sm:px-6 lg:px-8">
@@ -461,13 +505,16 @@ export default function Storefront() {
       <SiteFooter locationUrl={locationUrl} storeContactNumber={storeContactNumber} whatsappUrl={whatsappUrl} />
 
       {showCartModal ? (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 px-4">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-2xl border border-[#dcc8a9] bg-[#fff8eb] p-6 shadow-2xl">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 px-4" onClick={closeCheckoutModal}>
+          <div
+            className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-2xl border border-[#dcc8a9] bg-[#fff8eb] p-6 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-xl font-semibold text-[#4b3118]">Checkout - Step {checkoutStep} of 3</h3>
               <button
                 type="button"
-                onClick={() => setShowCartModal(false)}
+                onClick={closeCheckoutModal}
                 className="rounded-md bg-[#f1e0c3] px-3 py-1 text-sm font-semibold text-[#5c4024]"
               >
                 Close
@@ -607,48 +654,99 @@ export default function Storefront() {
       ) : null}
 
       {showAuthModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4">
-          <div className="w-full max-w-md rounded-2xl border border-[#dcc8a9] bg-[#fff8eb] p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4" onClick={closeAuthModal}>
+          <div
+            className="w-full max-w-md rounded-2xl border border-[#dcc8a9] bg-[#fff8eb] p-6 shadow-2xl transition-all duration-200"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-xl font-semibold text-[#4b3118]">{authMode === "login" ? "Login" : "Register"}</h3>
-              <button type="button" onClick={() => setShowAuthModal(false)} className="rounded-md bg-[#f1e0c3] px-3 py-1 text-sm font-semibold text-[#5c4024]">
+              <button
+                type="button"
+                onClick={closeAuthModal}
+                className="rounded-md bg-[#f1e0c3] px-3 py-1 text-sm font-semibold text-[#5c4024]"
+              >
                 Close
               </button>
             </div>
-            <form className="space-y-3" onSubmit={handleAuthSubmit}>
-              <input
-                type="tel"
-                value={authPhone}
-                onChange={(event) => setAuthPhone(event.target.value)}
-                placeholder="98XXXXXXXX"
-                required
-                className="w-full rounded-lg border border-[#ccb08a] bg-white px-3 py-2 text-sm"
-              />
-              <input
-                type="password"
-                value={authPassword}
-                onChange={(event) => setAuthPassword(event.target.value)}
-                placeholder="Password"
-                minLength={6}
-                required
-                className="w-full rounded-lg border border-[#ccb08a] bg-white px-3 py-2 text-sm"
-              />
+            <div className="mb-4 grid grid-cols-2 rounded-xl border border-[#d8c09f] bg-white p-1">
               <button
-                type="submit"
-                disabled={authMutation.isPending}
-                className="w-full rounded-lg bg-[#5e9033] px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                type="button"
+                onClick={() => {
+                  setAuthMode("login");
+                  setAuthError(null);
+                }}
+                className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                  authMode === "login" ? "bg-[#6f4b2b] text-white" : "text-[#6f4b2b] hover:bg-[#f6ead5]"
+                }`}
               >
-                {authMutation.isPending ? "Please wait..." : authMode === "login" ? "Login" : "Register"}
+                Login
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  setAuthMode((prev) => (prev === "login" ? "register" : "login"));
+                  setAuthMode("register");
                   setAuthError(null);
                 }}
-                className="w-full text-xs font-semibold text-[#4f7c2b] underline"
+                className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                  authMode === "register" ? "bg-[#6f4b2b] text-white" : "text-[#6f4b2b] hover:bg-[#f6ead5]"
+                }`}
               >
-                {authMode === "login" ? "New user? Register" : "Already registered? Login"}
+                Register
+              </button>
+            </div>
+            <form className="space-y-3" onSubmit={handleAuthSubmit}>
+              {authMode === "register" ? (
+                <label className="block space-y-1">
+                  <span className="text-xs font-semibold text-[#5c4024]">Full Name</span>
+                  <input
+                    type="text"
+                    value={authName}
+                    onChange={(event) => setAuthName(event.target.value)}
+                    placeholder="Your full name"
+                    required={authMode === "register"}
+                    className="w-full rounded-lg border border-[#ccb08a] bg-white px-3 py-2 text-sm outline-none transition focus:border-[#6f4b2b] focus:ring-2 focus:ring-[#6f4b2b]/20"
+                  />
+                </label>
+              ) : null}
+              <label className="block space-y-1">
+                <span className="text-xs font-semibold text-[#5c4024]">eSewa Number</span>
+                <input
+                  type="tel"
+                  value={authPhone}
+                  onChange={(event) => setAuthPhone(event.target.value)}
+                  placeholder="98XXXXXXXX"
+                  required
+                  className="w-full rounded-lg border border-[#ccb08a] bg-white px-3 py-2 text-sm outline-none transition focus:border-[#6f4b2b] focus:ring-2 focus:ring-[#6f4b2b]/20"
+                />
+              </label>
+              <label className="block space-y-1">
+                <span className="text-xs font-semibold text-[#5c4024]">Password</span>
+                <div className="flex items-center gap-2 rounded-lg border border-[#ccb08a] bg-white px-2 py-1">
+                  <input
+                    type={showAuthPassword ? "text" : "password"}
+                    value={authPassword}
+                    onChange={(event) => setAuthPassword(event.target.value)}
+                    placeholder="Password"
+                    minLength={6}
+                    required
+                    className="w-full bg-transparent px-1 py-1 text-sm outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAuthPassword((prev) => !prev)}
+                    className="rounded-md px-2 py-1 text-xs font-semibold text-[#4f7c2b] hover:bg-[#eef7e3]"
+                  >
+                    {showAuthPassword ? "Hide" : "Show"}
+                  </button>
+                </div>
+              </label>
+              <button
+                type="submit"
+                disabled={authMutation.isPending}
+                className="w-full rounded-lg bg-[#5e9033] px-3 py-2 text-sm font-semibold text-white transition hover:brightness-105 disabled:opacity-60"
+              >
+                {authMutation.isPending ? "Please wait..." : authMode === "login" ? "Login" : "Register"}
               </button>
               {authError ? <p className="text-sm text-[#b03e2f]">{authError}</p> : null}
             </form>
