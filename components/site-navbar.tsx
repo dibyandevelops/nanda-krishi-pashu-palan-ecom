@@ -19,13 +19,13 @@ export default function SiteNavbar({
 }: SiteNavbarProps) {
   return (
     <nav className="sticky top-0 z-40 border-b border-[#dcc8a9] bg-[#fff8eb]/95 backdrop-blur-sm">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-[#9a6f3f]">Nanda Krishi Tatha Pasupalan</p>
           <h1 className="text-lg font-semibold text-[#4b3118]">Dairy Market</h1>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Link href="/" className="rounded-md px-3 py-2 text-sm font-semibold text-[#5c4024] hover:bg-[#f2e3cb]">
             Home
           </Link>
@@ -44,7 +44,8 @@ export default function SiteNavbar({
               onClick={onLogout}
               className="rounded-md bg-[#5e9033] px-3 py-2 text-sm font-semibold text-white hover:bg-[#4f7c2b]"
             >
-              Logout ({phone})
+              <span className="sm:hidden">Logout</span>
+              <span className="hidden sm:inline">Logout ({phone})</span>
             </button>
           ) : null}
 

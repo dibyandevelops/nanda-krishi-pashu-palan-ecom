@@ -6,6 +6,7 @@ import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { gqlRequest } from "@/lib/gql-request";
 import { products } from "@/lib/products";
 import SiteNavbar from "@/components/site-navbar";
+import SiteFooter from "@/components/site-footer";
 
 const LocationPickerMap = dynamic(() => import("@/components/location-picker-map"), { ssr: false });
 
@@ -457,40 +458,7 @@ export default function Storefront() {
         ) : null}
       </button>
 
-      <footer className="border-t border-[#d8bc98] bg-[#f7ead1] px-4 py-6 text-sm text-[#5c4024] sm:px-6 lg:px-8">
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p>© {new Date().getFullYear()} Nanda Krishi Tatha Pasupalan. All rights reserved.</p>
-            <p className="mt-1">Contact: {storeContactNumber} | Hours: Weekdays 6:00 AM - 6:00 PM</p>
-            <p className="mt-1">Location: Harisiddhi, Lalitpur | PAN: 123786236</p>
-            <a href={locationUrl} target="_blank" rel="noreferrer" className="mt-1 inline-block font-semibold text-[#3f7c2d] underline">
-              Open Google Maps Location
-            </a>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <a
-              href={whatsappUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-lg bg-[#25d366] px-3 py-2 font-semibold text-white"
-            >
-              WhatsApp Us
-            </a>
-            <p>
-              Need a similar application?{" "}
-              <a
-                href="https://dibyan.com.np"
-                target="_blank"
-                rel="noreferrer"
-                className="font-semibold text-[#3f7c2d] underline"
-              >
-                dibyan.com.np
-              </a>
-            </p>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter locationUrl={locationUrl} storeContactNumber={storeContactNumber} whatsappUrl={whatsappUrl} />
 
       {showCartModal ? (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 px-4">
